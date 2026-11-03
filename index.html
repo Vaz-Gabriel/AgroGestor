@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroGestor ERP - Sistema Completo</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 800: '#065f46', 900: '#064e3b', 950: '#022c22' }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.25s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .toast-enter { animation: slideInRight 0.3s forwards; }
+        .toast-leave { animation: slideOutRight 0.3s forwards; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[999] flex flex-col space-y-2"></div>
+
+    <!-- ========================================== -->
+    <!-- TELA DE LOGIN & AUTENTICAÇÃO -->
+    <!-- ========================================== -->
+    <div id="auth-screen" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden fade-in border border-slate-200">
+            <div class="bg-brand-950 p-8 text-center text-white relative border-b border-brand-800">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-900 border border-brand-700 mb-3 shadow-inner">
+                    <i data-lucide="leaf" class="w-8 h-8 text-brand-500"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight">AgroGestor <span class="text-brand-500">ERP</span></h1>
+                <p class="text-brand-100/70 text-xs mt-1">Acesso exclusivo para lojas e centros de distribuição</p>
+            </div>
+            
+            <div class="p-8">
+                <form id="form-login" onsubmit="handleAuthLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">E-mail Corporativo</label>
+                        <div class="relative">
+                            <i data-lucide="mail" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="email" id="auth-email" required placeholder="admin@agrogestor.com" 
+                                class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+                        </div>
+                        <p id="email-error" class="text-rose-600 text-xs mt-1 hidden"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Senha de Acesso</label>
+                        <div class="relative">
+                            <i data-lucide="lock" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="password" id="auth-password" required minlength="6" placeholder="••••••••" 
+                                class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+                        </div>
+                        <p id="password-error" class="text-rose-600 text-xs mt-1 hidden"></p>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs pt-1">
+                        <label class="flex items-center text-slate-600 cursor-pointer">
+                            <input type="checkbox" id="auth-remember" checked class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 mr-2">
+                            Lembrar meu acesso
+                        </label>
+                        <a href="javascript:void(0)" onclick="showToast('Link de recuperação enviado ao administrador.', 'info')" class="text-brand-600 hover:underline font-medium">Esqueceu a senha?</a>
+                    </div>
+
+                    <button type="submit" id="btn-login-submit" class="w-full py-3 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-700 shadow-md transition-all active:scale-[0.99] flex items-center justify-center">
+                        <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Entrar no Sistema
+                    </button>
+                </form>
+
+                <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>Versão 2.4.0 SaaS</span>
+                    <button type="button" onclick="preencherAcessoDemonstracao()" class="text-brand-700 font-semibold hover:underline">Preencher Demonstração</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SIDEBAR -->
+    <!-- ========================================== -->
+    <aside class="w-64 bg-brand-950 text-white flex flex-col shrink-0 z-20">
+        <div class="h-16 flex items-center px-6 border-b border-brand-800 bg-brand-900 shrink-0">
+            <i data-lucide="leaf" class="w-5 h-5 text-brand-500 mr-2"></i>
+            <span class="font-bold tracking-tight text-lg text-brand-50">AgroGestor<span class="text-brand-500 font-normal">ERP</span></span>
+        </div>
+
+        <!-- Seletor de Empresa -->
+        <div class="relative p-4 border-b border-brand-800/50 bg-brand-950/40 shrink-0">
+            <p class="text-[10px] font-bold uppercase text-brand-500 tracking-wider mb-1">Empresa Ativa</p>
+            <div onclick="toggleDropdown('company-dropdown')" class="flex items-center justify-between cursor-pointer hover:bg-brand-900 p-2 rounded-md -mx-2 transition">
+                <div>
+                    <p class="text-sm font-medium text-white truncate" id="side-company-name">Agropecuária Vale Verde</p>
+                    <p class="text-xs text-brand-100/50" id="side-company-branch">Matriz - Loja 01</p>
+                </div>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-brand-500"></i>
+            </div>
+            <div id="company-dropdown" class="hidden absolute top-full left-4 right-4 mt-1 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden text-slate-700">
+                <button onclick="selecionarUnidade('Filial Centro (Loja 02)')" class="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm border-b border-slate-100">
+                    <span class="font-semibold block">Filial Centro</span>
+                    <span class="text-xs text-slate-400">Loja 02</span>
+                </button>
+                <button onclick="selecionarUnidade('CD Principal (Armazém)')" class="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm">
+                    <span class="font-semibold block">CD Principal</span>
+                    <span class="text-xs text-slate-400">Centro de Distribuição</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navegação Principal -->
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto mt-2">
+            <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg bg-brand-600 text-white shadow-sm">
+                <i data-lucide="layout-dashboard" class="w-4 h-4 mr-3"></i> Dashboard
+            </button>
+            <button onclick="navigate('produtos')" id="nav-produtos" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-brand-100 hover:bg-brand-900 transition-colors">
+                <i data-lucide="package" class="w-4 h-4 mr-3"></i> Catálogo e Produtos
+            </button>
+            <button onclick="navigate('pdv')" id="nav-pdv" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-brand-100 hover:bg-brand-900 transition-colors">
+                <i data-lucide="shopping-cart" class="w-4 h-4 mr-3"></i> PDV / Frente de Caixa
+            </button>
+            <button onclick="navigate('cd')" id="nav-cd" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-brand-100 hover:bg-brand-900 transition-colors">
+                <i data-lucide="warehouse" class="w-4 h-4 mr-3"></i> Centro de Distribuição
+            </button>
+            <button onclick="navigate('logistica')" id="nav-logistica" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-brand-100 hover:bg-brand-900 transition-colors">
+                <i data-lucide="truck" class="w-4 h-4 mr-3"></i> Logística e Rotas
+            </button>
+            <button onclick="navigate('financeiro')" id="nav-financeiro" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-brand-100 hover:bg-brand-900 transition-colors">
+                <i data-lucide="dollar-sign" class="w-4 h-4 mr-3"></i> Financeiro
+            </button>
+        </nav>
+
+        <!-- Informações do Usuário & Logout -->
+        <div class="p-4 border-t border-brand-800 bg-brand-950 shrink-0">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center truncate mr-2">
+                    <div id="side-user-avatar" class="w-8 h-8 rounded-full bg-brand-800 flex items-center justify-center text-sm font-bold text-brand-100 border border-brand-600 shrink-0">
+                        JS
+                    </div>
+                    <div class="ml-3 truncate">
+                        <p class="text-sm font-medium text-white truncate" id="side-user-name">João Silva</p>
+                        <p class="text-xs text-brand-100/60 truncate" id="side-user-role">Administrador</p>
+                    </div>
+                </div>
+                <button onclick="handleAuthLogout()" title="Sair do Sistema" class="p-1.5 text-brand-100/60 hover:text-rose-400 hover:bg-brand-900 rounded-lg transition">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ========================================== -->
+    <!-- ÁREA PRINCIPAL -->
+    <!-- ========================================== -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 relative z-10">
+        
+        <!-- HEADER -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-sm shrink-0">
+            <h2 id="page-title" class="text-lg font-semibold text-slate-800">Visão Geral (Dashboard)</h2>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative hidden md:block text-slate-400">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                    <input type="text" placeholder="Busca global (F2)..." onkeypress="if(event.key === 'Enter') showToast('Pesquisa rápida realizada!', 'info')" 
+                        class="pl-9 pr-4 py-1.5 bg-slate-100 border-transparent rounded-lg text-sm focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition-all w-64 text-slate-700">
+                </div>
+                
+                <div class="relative">
+                    <button onclick="toggleDropdown('notificacoes-dropdown')" class="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                    </button>
+                    <div id="notificacoes-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden text-slate-700">
+                        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50 font-semibold text-sm">Notificações Operacionais</div>
+                        <div class="max-h-64 overflow-y-auto">
+                            <div class="px-4 py-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
+                                <p class="text-xs font-semibold text-rose-600 mb-0.5">Estoque Baixo</p>
+                                <p class="text-xs text-slate-600">Vermífugo Espectro Total atingiu 10 unidades.</p>
+                            </div>
+                            <div class="px-4 py-3 hover:bg-slate-50 cursor-pointer">
+                                <p class="text-xs font-semibold text-brand-600 mb-0.5">Caixa 01</p>
+                                <p class="text-xs text-slate-600">Aguardando conferência de sangria.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTAINER ROLÁVEL DAS VIEWS -->
+        <div class="flex-1 overflow-y-auto">
+            
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="view-section p-6 space-y-6 fade-in block">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between cursor-pointer hover:border-brand-300 transition" onclick="showToast('Relatório de vendas carregado', 'info')">
+                        <div class="flex justify-between items-start">
+                            <div><p class="text-sm font-semibold text-slate-500">Vendas (Hoje)</p><h3 class="text-2xl font-bold text-slate-800 mt-1" id="dash-vendas-hoje">R$ 14.350,00</h3></div>
+                            <div class="p-2 bg-brand-50 rounded-lg"><i data-lucide="trending-up" class="w-5 h-5 text-brand-600"></i></div>
+                        </div>
+                        <p class="text-xs text-brand-600 font-medium mt-4 flex items-center"><i data-lucide="arrow-up" class="w-3 h-3 mr-1"></i> 12% vs. ontem</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between cursor-pointer hover:border-blue-300 transition" onclick="navigate('cd')">
+                        <div class="flex justify-between items-start">
+                            <div><p class="text-sm font-semibold text-slate-500">Pedidos (Atacado)</p><h3 class="text-2xl font-bold text-slate-800 mt-1">24</h3></div>
+                            <div class="p-2 bg-blue-50 rounded-lg"><i data-lucide="shopping-bag" class="w-5 h-5 text-blue-600"></i></div>
+                        </div>
+                        <p class="text-xs text-slate-500 font-medium mt-4">8 aguardando separação</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between cursor-pointer hover:border-rose-300 transition" onclick="navigate('produtos'); showToast('Filtro de estoque baixo ativo', 'info')">
+                        <div class="flex justify-between items-start">
+                            <div><p class="text-sm font-semibold text-slate-500">Alertas de Estoque</p><h3 class="text-2xl font-bold text-rose-600 mt-1">1 Produto</h3></div>
+                            <div class="p-2 bg-rose-50 rounded-lg"><i data-lucide="alert-triangle" class="w-5 h-5 text-rose-600"></i></div>
+                        </div>
+                        <p class="text-xs text-rose-600 font-medium mt-4 flex items-center hover:underline">Ver itens abaixo do mínimo <i data-lucide="chevron-right" class="w-3 h-3 ml-1"></i></p>
+                    </div>
+                    
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between cursor-pointer hover:border-purple-300 transition" onclick="navigate('financeiro')">
+                        <div class="flex justify-between items-start">
+                            <div><p class="text-sm font-semibold text-slate-500">Contas a Pagar</p><h3 class="text-2xl font-bold text-slate-800 mt-1">R$ 5.230,00</h3></div>
+                            <div class="p-2 bg-purple-50 rounded-lg"><i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i></div>
+                        </div>
+                        <p class="text-xs text-rose-500 font-medium mt-4">Vencimento para hoje</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-base font-bold text-slate-800 mb-4">Últimas Movimentações</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded bg-brand-50 flex items-center justify-center text-brand-600 mr-3"><i data-lucide="arrow-down-to-line" class="w-4 h-4"></i></div>
+                                    <div><p class="text-sm font-semibold text-slate-800">NF-e 14592</p><p class="text-xs text-slate-500">Entrada (Zoetis)</p></div>
+                                </div>
+                                <span class="text-sm font-bold text-slate-700">R$ 4.200,00</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-blue-600 mr-3"><i data-lucide="shopping-cart" class="w-4 h-4"></i></div>
+                                    <div><p class="text-sm font-semibold text-slate-800">PDV - Caixa 01</p><p class="text-xs text-slate-500">Venda Balcão</p></div>
+                                </div>
+                                <span class="text-sm font-bold text-brand-600">+ R$ 139,90</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: PRODUTOS -->
+            <div id="view-produtos" class="view-section p-6 space-y-6 hidden fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                    <div class="relative w-full sm:w-96 text-slate-400">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                        <input type="text" id="prod-search-input" onkeyup="filtrarProdutosNaTabela(this.value)" placeholder="Buscar por nome, SKU..." 
+                            class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none text-slate-700 shadow-sm">
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="showToast('Filtros avançados em preparação', 'info')" class="flex items-center px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm">
+                            <i data-lucide="filter" class="w-4 h-4 mr-2"></i> Filtros
+                        </button>
+                        <button onclick="toggleModal('modal-produto')" class="flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 shadow-sm">
+                            <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Novo Produto
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase">
+                                <tr>
+                                    <th class="p-4 w-8"><input type="checkbox" onclick="showToast('Seleção em massa', 'info')" class="rounded border-slate-300 text-brand-600"></th>
+                                    <th class="p-4">SKU / Cód. Barras</th>
+                                    <th class="p-4">Descrição do Produto</th>
+                                    <th class="p-4">Estoque</th>
+                                    <th class="p-4">Preço (Varejo)</th>
+                                    <th class="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-produtos" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: PDV (COM CONTROLE REAL DE CAIXA) -->
+            <div id="view-pdv" class="view-section h-full flex flex-col hidden fade-in">
+                
+                <!-- BARRA DE STATUS DO TERMINAL DE CAIXA -->
+                <div class="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-sm">
+                    <div class="flex items-center space-x-6">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs uppercase font-bold text-slate-400">Terminal:</span>
+                            <span class="text-sm font-extrabold text-slate-800" id="pdv-display-caixa">Caixa 01</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs uppercase font-bold text-slate-400">Operador:</span>
+                            <span class="text-sm font-semibold text-slate-700" id="pdv-display-operador">João Silva</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs uppercase font-bold text-slate-400">Status:</span>
+                            <span id="pdv-badge-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">FECHADO</span>
+                        </div>
+                        <div class="hidden sm:flex items-center space-x-2">
+                            <span class="text-xs uppercase font-bold text-slate-400">Fundo de Troco:</span>
+                            <span class="text-sm font-bold text-brand-700" id="pdv-display-fundo">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <!-- Botões de Controle de Caixa -->
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-abrir-caixa" onclick="toggleModal('modal-abrir-caixa')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition flex items-center">
+                            <i data-lucide="unlock" class="w-3.5 h-3.5 mr-1.5"></i> Abrir Caixa
+                        </button>
+                        <button id="btn-sangria" onclick="abrirModalMovimento('bleed')" class="hidden px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 transition flex items-center">
+                            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 mr-1.5 text-rose-600"></i> Sangria
+                        </button>
+                        <button id="btn-suprimento" onclick="abrirModalMovimento('supply')" class="hidden px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 transition flex items-center">
+                            <i data-lucide="arrow-down-left" class="w-3.5 h-3.5 mr-1.5 text-emerald-600"></i> Suprimento
+                        </button>
+                        <button id="btn-fechar-caixa" onclick="abrirModalFechamentoCaixa()" class="hidden px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 transition flex items-center">
+                            <i data-lucide="lock" class="w-3.5 h-3.5 mr-1.5"></i> Fechar Caixa
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CORPO DO PDV -->
+                <div class="flex-1 flex flex-col md:flex-row overflow-hidden p-4 gap-4 bg-slate-100">
+                    <!-- Painel Esquerdo: Itens -->
+                    <div class="flex-1 flex flex-col min-w-0">
+                        <div class="relative w-full text-slate-400 mb-3">
+                            <i data-lucide="barcode" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                            <input type="text" id="pdv-input" placeholder="Bipar código de barras ou digitar nome do produto (Enter)" onkeypress="handlePDVInput(event)" 
+                                class="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-base font-medium focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none shadow-sm disabled:bg-slate-200 disabled:cursor-not-allowed">
+                        </div>
+                        
+                        <div class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                            <div class="bg-slate-800 text-slate-100 text-xs font-semibold uppercase grid grid-cols-12 p-3">
+                                <div class="col-span-1">Item</div>
+                                <div class="col-span-6">Descrição</div>
+                                <div class="col-span-2 text-center">Qtd</div>
+                                <div class="col-span-3 text-right">Total</div>
+                            </div>
+                            <div id="pdv-cart" class="flex-1 overflow-y-auto divide-y divide-slate-100 p-2">
+                                <div class="flex flex-col items-center justify-center h-full text-slate-400 p-6 text-center" id="pdv-empty">
+                                    <i data-lucide="shopping-cart" class="w-12 h-12 mb-3 text-slate-300"></i>
+                                    <p class="text-sm font-medium">Nenhum item na venda atual.<br>Abra o caixa e bipe um produto.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Painel Direito: Totais -->
+                    <div class="w-full md:w-96 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col shrink-0">
+                        <div class="mb-4">
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-1">Cliente</p>
+                            <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition" onclick="showToast('Busca de cliente aberta', 'info')">
+                                <span class="text-sm font-medium text-slate-700 flex items-center"><i data-lucide="user" class="w-4 h-4 mr-2 text-slate-400"></i> Consumidor Final</span>
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1"></div>
+
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-4">
+                            <div class="flex justify-between text-slate-500 mb-1 text-xs"><p>Subtotal</p><p id="pdv-sub">R$ 0,00</p></div>
+                            <div class="flex justify-between text-brand-600 mb-3 text-xs font-medium"><p>Descontos</p><p>R$ 0,00</p></div>
+                            <div class="flex justify-between items-end border-t border-slate-200 pt-3">
+                                <p class="text-slate-600 font-bold text-sm">TOTAL</p>
+                                <p class="text-3xl font-extrabold text-slate-900" id="pdv-total">R$ 0,00</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <button onclick="selecionarMetodoPagamento('Dinheiro')" id="btn-pay-dinheiro" class="p-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-brand-50 hover:border-brand-500 hover:text-brand-700 transition flex flex-col items-center justify-center">
+                                <i data-lucide="banknote" class="w-5 h-5 mb-1 text-emerald-600"></i> Dinheiro
+                            </button>
+                            <button onclick="selecionarMetodoPagamento('PIX/Cartão')" id="btn-pay-cartao" class="p-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-brand-50 hover:border-brand-500 hover:text-brand-700 transition flex flex-col items-center justify-center">
+                                <i data-lucide="credit-card" class="w-5 h-5 mb-1 text-blue-600"></i> Cartão / PIX
+                            </button>
+                        </div>
+
+                        <button onclick="finalizarVenda()" id="btn-finalizar-venda" disabled 
+                            class="w-full py-3.5 bg-brand-600 text-white rounded-xl text-base font-bold hover:bg-brand-700 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            FINALIZAR VENDA
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: CD / WMS -->
+            <div id="view-cd" class="view-section p-6 h-full flex flex-col hidden fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-h-[500px]">
+                    <div class="bg-slate-100 rounded-xl p-4 flex flex-col border border-slate-200">
+                        <h3 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="package-plus" class="w-5 h-5 mr-2"></i> 1. Recebimento</h3>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-3 cursor-pointer hover:border-brand-400" onclick="showToast('Abrindo conferência de entrada...', 'info')">
+                            <div class="flex justify-between items-start mb-2"><span class="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded">NF-e 8839</span><span class="text-xs text-slate-400">10 min</span></div>
+                            <p class="font-semibold text-sm text-slate-800">Fornecedor: Zoetis Brasil</p>
+                            <p class="text-xs text-slate-500 mt-1">12 volumes aguardando bipagem</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-100 rounded-xl p-4 flex flex-col border border-slate-200">
+                        <h3 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="list-checks" class="w-5 h-5 mr-2"></i> 2. Picking (Separação)</h3>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-3 cursor-pointer hover:border-brand-400 border-l-4 border-l-brand-500" onclick="showToast('Iniciando onda de separação...', 'info')">
+                            <div class="flex justify-between items-start mb-2"><span class="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pedido #502</span><span class="text-xs text-brand-600 font-bold">ALTA</span></div>
+                            <p class="font-semibold text-sm text-slate-800">Cliente: Fazenda 3 Marias</p>
+                            <p class="text-xs text-slate-500 mt-1">45 itens - Corredores A e B</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-100 rounded-xl p-4 flex flex-col border border-slate-200">
+                        <h3 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="truck" class="w-5 h-5 mr-2"></i> 3. Expedição e Doca</h3>
+                        <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                            <i data-lucide="check-circle" class="w-8 h-8 mb-2"></i><p class="text-sm">Área de docas limpa</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: LOGÍSTICA -->
+            <div id="view-logistica" class="view-section p-6 space-y-6 hidden fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-6 items-center">
+                    <div class="flex-1 w-full bg-slate-100 rounded-lg h-64 border border-slate-300 flex items-center justify-center overflow-hidden relative cursor-pointer" onclick="showToast('Módulo de mapa ativo na versão web', 'info')">
+                        <div class="z-10 flex flex-col items-center text-slate-500">
+                            <i data-lucide="map" class="w-10 h-10 mb-2"></i><p class="font-medium text-sm">Monitoramento de Entregas e Frotas</p>
+                        </div>
+                    </div>
+                    <div class="w-full lg:w-1/3 space-y-4">
+                        <h3 class="font-bold text-slate-800">Motoristas em Rota</h3>
+                        <div class="p-3 border border-slate-200 rounded-lg flex items-center justify-between cursor-pointer hover:bg-slate-50">
+                            <div class="flex items-center"><div class="w-10 h-10 rounded-full bg-slate-200 mr-3 flex items-center justify-center"><i data-lucide="user" class="text-slate-500 w-5 h-5"></i></div>
+                                <div><p class="text-sm font-bold text-slate-800">Carlos Eduardo</p><p class="text-xs text-slate-500">Fiorino (ABC-1234)</p></div>
+                            </div>
+                            <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Em trânsito</span>
+                        </div>
+                        <button onclick="showToast('Roteirizador acionado', 'info')" class="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition">Criar Nova Rota</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: FINANCEIRO -->
+            <div id="view-financeiro" class="view-section p-6 space-y-6 hidden fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl border-l-4 border-l-emerald-500 shadow-sm">
+                        <p class="text-sm text-slate-500 font-medium">Contas a Receber</p>
+                        <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="fin-receber">R$ 4.500,00</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border-l-4 border-l-rose-500 shadow-sm">
+                        <p class="text-sm text-slate-500 font-medium">Contas a Pagar</p>
+                        <h3 class="text-2xl font-bold text-rose-600 mt-1" id="fin-pagar">R$ 5.230,00</h3>
+                    </div>
+                    <div class="bg-slate-800 p-5 rounded-xl shadow-sm text-white">
+                        <p class="text-sm text-slate-300 font-medium">Saldo em Caixa Operacional</p>
+                        <h3 class="text-2xl font-bold mt-1" id="fin-saldo-caixa">R$ 0,00</h3>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200">
+                    <div class="p-4 border-b border-slate-200 font-bold text-slate-800 flex justify-between items-center">
+                        Contas Registradas no Banco
+                        <button onclick="showToast('Formulário de lançamento aberto', 'info')" class="text-sm font-medium text-brand-600 hover:underline">+ Nova Conta</button>
+                    </div>
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase">
+                            <tr><th class="p-4">Tipo</th><th class="p-4">Descrição</th><th class="p-4">Valor</th><th class="p-4">Ação</th></tr>
+                        </thead>
+                        <tbody id="tabela-financeiro" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- MODAIS DO SISTEMA -->
+    <!-- ========================================== -->
+
+    <!-- MODAL: ABERTURA DE CAIXA -->
+    <div id="modal-abrir-caixa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="text-base font-bold text-slate-800 flex items-center"><i data-lucide="unlock" class="w-4 h-4 mr-2 text-emerald-600"></i> Abertura de Caixa</h3>
+                <button onclick="toggleModal('modal-abrir-caixa')" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="confirmarAberturaCaixa(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Número do Caixa *</label>
+                    <select id="open-box-number" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white font-medium outline-none">
+                        <option value="1">Caixa 01 - Balcão Principal</option>
+                        <option value="2">Caixa 02 - Atacado e Rápido</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nome do Operador *</label>
+                    <input type="text" id="open-box-operator" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-medium outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Fundo de Troco Inicial (R$) *</label>
+                    <input type="number" step="0.01" id="open-box-amount" value="150.00" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold text-brand-700 outline-none">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="toggleModal('modal-abrir-caixa')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700">Confirmar Abertura</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: SANGRIA & SUPRIMENTO -->
+    <div id="modal-movimento-caixa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 id="mov-caixa-title" class="text-base font-bold text-slate-800">Movimentação de Caixa</h3>
+                <button onclick="toggleModal('modal-movimento-caixa')" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="confirmarMovimentoCaixa(event)" class="p-6 space-y-4">
+                <input type="hidden" id="mov-tipo">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Valor do Lançamento (R$) *</label>
+                    <input type="number" step="0.01" id="mov-valor" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Justificativa / Motivo *</label>
+                    <input type="text" id="mov-motivo" required placeholder="Ex: Recolhimento para cofre ou troco extra" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="toggleModal('modal-movimento-caixa')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-700">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: FECHAMENTO DE CAIXA -->
+    <div id="modal-fechar-caixa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-rose-50 text-rose-900">
+                <h3 class="text-base font-bold flex items-center"><i data-lucide="lock" class="w-4 h-4 mr-2 text-rose-600"></i> Conferência de Fechamento</h3>
+                <button onclick="toggleModal('modal-fechar-caixa')" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-sm">
+                    <div class="flex justify-between text-slate-600"><span>Fundo Inicial:</span><span id="close-fundo" class="font-bold">R$ 0,00</span></div>
+                    <div class="flex justify-between text-slate-600"><span>Vendas no Dinheiro:</span><span id="close-vendas-dinheiro" class="font-bold text-emerald-600">R$ 0,00</span></div>
+                    <div class="flex justify-between text-slate-600"><span>Vendas no Cartão/PIX:</span><span id="close-vendas-cartao" class="font-bold text-blue-600">R$ 0,00</span></div>
+                    <div class="flex justify-between text-slate-600 border-t border-slate-200 pt-2 font-bold text-slate-800">
+                        <span>Total Gaveta Estimado:</span>
+                        <span id="close-total-gaveta" class="text-base">R$ 0,00</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Valor Contado em Gaveta (R$) *</label>
+                    <input type="number" step="0.01" id="close-counted-amount" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold text-brand-700 outline-none">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="toggleModal('modal-fechar-caixa')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                    <button type="button" onclick="confirmarFechamentoCaixa()" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700">Encerrar Caixa</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: NOVO PRODUTO -->
+    <div id="modal-produto" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">Cadastrar Novo Produto</h3>
+                <button onclick="toggleModal('modal-produto')" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6">
+                <form id="form-produto" onsubmit="salvarNovoProduto(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nome Comercial *</label>
+                        <input type="text" id="prod-name" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">SKU / Código *</label>
+                            <input type="text" id="prod-sku" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-mono uppercase outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Preço Venda (R$) *</label>
+                            <input type="number" step="0.01" id="prod-price" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold text-brand-700 outline-none">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Estoque Físico *</label>
+                            <input type="number" id="prod-stock" value="10" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Unidade *</label>
+                            <select id="prod-unit" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none bg-white">
+                                <option value="SC">Saco (SC)</option>
+                                <option value="CX">Caixa (CX)</option>
+                                <option value="UN">Unidade (UN)</option>
+                                <option value="KG">Quilo (KG)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" onclick="toggleModal('modal-produto')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                        <button type="submit" class="px-5 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-700">Salvar Produto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LOGICA JS (SUPABASE + VANILLA JS CORRIGIDA) -->
+    <!-- ========================================== -->
+    <script>
+        lucide.createIcons();
+
+        // 1. CONFIGURAÇÃO DO SUPABASE
+        const SUPABASE_URL = 'https://wmvrcbfxwnpsgqrqbohh.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtdnJjYmZ4d25wc2dxcnFib2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwMDE1NDQsImV4cCI6MjEwNzU3NzU0NH0.Uz1vezW6cQ-fJL2tohuHz6fYQPkJH_34-2efErhbbqU';
+        
+        let db = null;
+        const isSupabaseReady = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('SUA_URL'));
+
+        try {
+            if (isSupabaseReady && window.supabase && typeof window.supabase.createClient === 'function') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (err) {
+            console.error("Falha ao inicializar o cliente Supabase:", err);
+        }
+
+        // 2. ESTADO DA SESSÃO & DADOS LOCAIS EM MEMÓRIA (FALLBACK)
+        let currentUser = null;
+        let activeCaixaSession = null;
+        let pdvCart = [];
+        let pdvSelectedMethod = 'Dinheiro';
+
+        let localProducts = [
+            { id: '1', sku: 'RAC-PREM-15KG', barcode: '7891000000012', name: 'Ração Premium Cães Adultos 15kg', unit_stock: 'SC', sale_price: 139.90, stock_quantity: 45 },
+            { id: '2', sku: 'MED-VER-01', barcode: '7891000000089', name: 'Vermífugo Espectro Total 4 Comp.', unit_stock: 'CX', sale_price: 35.00, stock_quantity: 10 },
+            { id: '3', sku: 'SAL-BOV-25KG', barcode: '7891000000150', name: 'Sal Mineral Bovinos Alta Energia 25kg', unit_stock: 'SC', sale_price: 89.00, stock_quantity: 80 }
+        ];
+
+        let localFinancial = [
+            { id: '1', type: 'payable', description: 'Energia Elétrica (CPFL)', amount: 1250.00, status: 'pending' },
+            { id: '2', type: 'payable', description: 'Fornecedor Ouro Fino', amount: 3980.00, status: 'pending' },
+            { id: '3', type: 'receivable', description: 'Venda a Prazo - Fazenda 3 Marias', amount: 4500.00, status: 'pending' }
+        ];
+
+        // 3. FLUXO DE AUTENTICAÇÃO E LOGIN
+        function preencherAcessoDemonstracao() {
+            document.getElementById('auth-email').value = 'admin@agrogestor.com';
+            document.getElementById('auth-password').value = '123456';
+        }
+
+        async function handleAuthLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const emailError = document.getElementById('email-error');
+            const passError = document.getElementById('password-error');
+
+            emailError.classList.add('hidden');
+            passError.classList.add('hidden');
+
+            if (!email.includes('@') || !email.includes('.')) {
+                emailError.textContent = 'Informe um e-mail válido.';
+                emailError.classList.remove('hidden');
+                return;
+            }
+            if (password.length < 6) {
+                passError.textContent = 'A senha deve conter no mínimo 6 dígitos.';
+                passError.classList.remove('hidden');
+                return;
+            }
+
+            const btn = document.getElementById('btn-login-submit');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Autenticando...`;
+            lucide.createIcons();
+
+            try {
+                if (isSupabaseReady && db) {
+                    const { data, error } = await db.auth.signInWithPassword({ email, password });
+                    if (error) {
+                        if (error.message.includes('Email not confirmed')) {
+                            throw new Error("E-mail não confirmado! Acesse Authentication > Users e confirme o usuário.");
+                        }
+                        if (error.message.includes('Invalid login credentials')) {
+                            throw new Error("E-mail ou senha incorretos.");
+                        }
+                        throw error;
+                    }
+                    currentUser = { 
+                        name: data.user.email.split('@')[0], 
+                        email: data.user.email, 
+                        role: 'Administrador' 
+                    };
+                } else {
+                    currentUser = { name: email.split('@')[0], email: email, role: 'Administrador' };
+                }
+
+                document.getElementById('side-user-name').textContent = currentUser.name;
+                document.getElementById('side-user-avatar').textContent = currentUser.name.substring(0, 2).toUpperCase();
+                document.getElementById('open-box-operator').value = currentUser.name;
+
+                document.getElementById('auth-screen').classList.add('hidden');
+                showToast(`Bem-vindo ao AgroGestor, ${currentUser.name}!`, 'success');
+                carregarTudo();
+            } catch (err) {
+                console.error("Erro na autenticação:", err);
+                passError.textContent = err.message || 'Falha na autenticação';
+                passError.classList.remove('hidden');
+                showToast('Erro no login: ' + (err.message || 'Verifique suas credenciais.'), 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Entrar no Sistema`;
+                lucide.createIcons();
+            }
+        }
+
+        function handleAuthLogout() {
+            if (activeCaixaSession && !confirm("O caixa está aberto! Deseja realmente sair sem fechá-lo?")) return;
+            currentUser = null;
+            if (isSupabaseReady && db) {
+                db.auth.signOut().catch(() => {});
+            }
+            document.getElementById('auth-screen').classList.remove('hidden');
+            showToast('Sessão encerrada com segurança.', 'info');
+        }
+
+        // 4. GESTÃO DE CAIXA (ABERTURA, SANGRIA, FECHAMENTO)
+        function atualizarStatusCaixaUI() {
+            const badge = document.getElementById('pdv-badge-status');
+            const btnAbrir = document.getElementById('btn-abrir-caixa');
+            const btnSangria = document.getElementById('btn-sangria');
+            const btnSuprimento = document.getElementById('btn-suprimento');
+            const btnFechar = document.getElementById('btn-fechar-caixa');
+            const inputPDV = document.getElementById('pdv-input');
+            const displayCaixa = document.getElementById('pdv-display-caixa');
+            const displayOperador = document.getElementById('pdv-display-operador');
+            const displayFundo = document.getElementById('pdv-display-fundo');
+
+            if (activeCaixaSession) {
+                badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700";
+                badge.textContent = "ABERTO";
+                btnAbrir.classList.add('hidden');
+                btnSangria.classList.remove('hidden');
+                btnSuprimento.classList.remove('hidden');
+                btnFechar.classList.remove('hidden');
+                inputPDV.disabled = false;
+                inputPDV.placeholder = "Bipar código de barras ou digitar nome do produto (Enter)";
+
+                displayCaixa.textContent = `Caixa ${String(activeCaixaSession.register_number).padStart(2, '0')}`;
+                displayOperador.textContent = activeCaixaSession.operator_name;
+                displayFundo.textContent = `R$ ${activeCaixaSession.initial_amount.toFixed(2).replace('.', ',')}`;
+            } else {
+                badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700";
+                badge.textContent = "FECHADO";
+                btnAbrir.classList.remove('hidden');
+                btnSangria.classList.add('hidden');
+                btnSuprimento.classList.add('hidden');
+                btnFechar.classList.add('hidden');
+                inputPDV.disabled = true;
+                inputPDV.value = '';
+                inputPDV.placeholder = "Caixa Fechado. Clique em 'Abrir Caixa' para operar.";
+
+                displayCaixa.textContent = "Caixa 01";
+                displayOperador.textContent = currentUser ? currentUser.name : "Operador";
+                displayFundo.textContent = "R$ 0,00";
+                pdvCart = [];
+                renderPDVCart();
+            }
+        }
+
+        async function confirmarAberturaCaixa(e) {
+            e.preventDefault();
+            const registerNum = parseInt(document.getElementById('open-box-number').value);
+            const operator = document.getElementById('open-box-operator').value.trim();
+            const amount = parseFloat(document.getElementById('open-box-amount').value || 0);
+
+            activeCaixaSession = {
+                id: 'sess_' + Date.now(),
+                register_number: registerNum,
+                operator_name: operator,
+                initial_amount: amount,
+                vendas_dinheiro: 0,
+                vendas_cartao: 0,
+                sangrias: 0,
+                suprimentos: 0,
+                opened_at: new Date()
+            };
+
+            if (isSupabaseReady && db) {
+                try {
+                    const { data, error } = await db.from('cash_sessions').insert([{
+                        register_id: '22222222-2222-2222-2222-22222222222' + registerNum,
+                        company_id: '11111111-1111-1111-1111-111111111111',
+                        operator_name: operator,
+                        initial_amount: amount,
+                        status: 'open'
+                    }]).select();
+                    if (!error && data && data.length > 0) {
+                        activeCaixaSession.db_session_id = data[0].id;
+                    }
+                } catch (err) {
+                    console.warn("Aviso ao sincronizar abertura de caixa no Supabase:", err);
+                }
+            }
+
+            toggleModal('modal-abrir-caixa');
+            atualizarStatusCaixaUI();
+            showToast(`Caixa ${registerNum} aberto com sucesso!`, 'success');
+        }
+
+        function abrirModalMovimento(tipo) {
+            document.getElementById('mov-tipo').value = tipo;
+            document.getElementById('mov-caixa-title').textContent = tipo === 'bleed' ? 'Realizar Sangria (Retirada)' : 'Realizar Suprimento (Entrada)';
+            document.getElementById('mov-valor').value = '';
+            document.getElementById('mov-motivo').value = '';
+            toggleModal('modal-movimento-caixa');
+        }
+
+        async function confirmarMovimentoCaixa(e) {
+            e.preventDefault();
+            const tipo = document.getElementById('mov-tipo').value;
+            const valor = parseFloat(document.getElementById('mov-valor').value || 0);
+            const motivo = document.getElementById('mov-motivo').value;
+
+            if (tipo === 'bleed') {
+                activeCaixaSession.sangrias += valor;
+                showToast(`Sangria de R$ ${valor.toFixed(2)} confirmada!`, 'info');
+            } else {
+                activeCaixaSession.suprimentos += valor;
+                showToast(`Suprimento de R$ ${valor.toFixed(2)} lançado!`, 'success');
+            }
+
+            if (isSupabaseReady && db) {
+                try {
+                    await db.from('cash_movements').insert([{
+                        session_id: activeCaixaSession.db_session_id || null,
+                        movement_type: tipo,
+                        amount: valor,
+                        reason: motivo
+                    }]);
+                } catch (err) {
+                    console.warn("Aviso ao salvar movimentação no Supabase:", err);
+                }
+            }
+
+            toggleModal('modal-movimento-caixa');
+        }
+
+        function abrirModalFechamentoCaixa() {
+            if (!activeCaixaSession) return;
+            const totalDinheiroGaveta = activeCaixaSession.initial_amount + activeCaixaSession.vendas_dinheiro + activeCaixaSession.suprimentos - activeCaixaSession.sangrias;
+
+            document.getElementById('close-fundo').textContent = `R$ ${activeCaixaSession.initial_amount.toFixed(2).replace('.', ',')}`;
+            document.getElementById('close-vendas-dinheiro').textContent = `R$ ${activeCaixaSession.vendas_dinheiro.toFixed(2).replace('.', ',')}`;
+            document.getElementById('close-vendas-cartao').textContent = `R$ ${activeCaixaSession.vendas_cartao.toFixed(2).replace('.', ',')}`;
+            document.getElementById('close-total-gaveta').textContent = `R$ ${totalDinheiroGaveta.toFixed(2).replace('.', ',')}`;
+            document.getElementById('close-counted-amount').value = totalDinheiroGaveta.toFixed(2);
+
+            toggleModal('modal-fechar-caixa');
+        }
+
+        async function confirmarFechamentoCaixa() {
+            const contado = parseFloat(document.getElementById('close-counted-amount').value || 0);
+            showToast(`Caixa ${activeCaixaSession.register_number} fechado com R$ ${contado.toFixed(2)} conferidos!`, 'success');
+
+            if (isSupabaseReady && db) {
+                try {
+                    if (activeCaixaSession.db_session_id) {
+                        await db.from('cash_sessions').update({ status: 'closed', closing_amount: contado, closed_at: new Date() }).eq('id', activeCaixaSession.db_session_id);
+                    } else {
+                        await db.from('cash_sessions').update({ status: 'closed', closing_amount: contado, closed_at: new Date() }).eq('status', 'open');
+                    }
+                } catch (err) {
+                    console.warn("Aviso ao fechar caixa no Supabase:", err);
+                }
+            }
+
+            activeCaixaSession = null;
+            toggleModal('modal-fechar-caixa');
+            atualizarStatusCaixaUI();
+        }
+
+        // 5. FLUXO DO PDV (CARRINHO E VENDA)
+        function handlePDVInput(e) {
+            if (e.key === 'Enter') {
+                if (!activeCaixaSession) {
+                    showToast('Abra o caixa antes de iniciar a venda!', 'error');
+                    return;
+                }
+                const term = e.target.value.trim().toLowerCase();
+                if (!term) return;
+
+                const produto = localProducts.find(p => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term) || (p.barcode && p.barcode.includes(term)));
+
+                if (produto) {
+                    pdvCart.push({ id: produto.id, name: produto.name, price: Number(produto.sale_price) });
+                    e.target.value = '';
+                    renderPDVCart();
+                    showToast(`${produto.name} adicionado`, 'success');
+                } else {
+                    showToast('Produto não localizado no estoque', 'error');
+                }
+            }
+        }
+
+        function renderPDVCart() {
+            const cartDiv = document.getElementById('pdv-cart');
+            const btnFinalizar = document.getElementById('btn-finalizar-venda');
+
+            if (pdvCart.length === 0) {
+                cartDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 p-6 text-center" id="pdv-empty"><i data-lucide="shopping-cart" class="w-12 h-12 mb-3 text-slate-300"></i><p class="text-sm">Nenhum item na venda atual.<br>Bipe um produto ou digite o nome.</p></div>`;
+                document.getElementById('pdv-sub').textContent = 'R$ 0,00';
+                document.getElementById('pdv-total').textContent = 'R$ 0,00';
+                btnFinalizar.disabled = true;
+                lucide.createIcons();
+                return;
+            }
+
+            cartDiv.innerHTML = '';
+            let total = 0;
+
+            pdvCart.forEach((item, index) => {
+                total += item.price;
+                const row = document.createElement('div');
+                row.className = "grid grid-cols-12 p-3 text-sm items-center bg-white hover:bg-slate-50 transition border-b border-slate-100";
+                row.innerHTML = `
+                    <div class="col-span-1 font-bold text-slate-400">${index + 1}</div>
+                    <div class="col-span-6 font-semibold text-slate-800 truncate pr-2">${item.name}</div>
+                    <div class="col-span-2 text-center text-slate-600">1 un</div>
+                    <div class="col-span-3 text-right font-bold text-slate-800">R$ ${item.price.toFixed(2).replace('.', ',')}</div>
+                `;
+                cartDiv.appendChild(row);
+            });
+
+            document.getElementById('pdv-sub').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            document.getElementById('pdv-total').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            btnFinalizar.disabled = false;
+        }
+
+        function selecionarMetodoPagamento(metodo) {
+            pdvSelectedMethod = metodo;
+            const btnDin = document.getElementById('btn-pay-dinheiro');
+            const btnCar = document.getElementById('btn-pay-cartao');
+
+            if (metodo === 'Dinheiro') {
+                btnDin.className = "p-2.5 border-2 border-brand-600 bg-brand-50 rounded-lg text-xs font-bold text-brand-900 transition flex flex-col items-center justify-center";
+                btnCar.className = "p-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex flex-col items-center justify-center";
+            } else {
+                btnCar.className = "p-2.5 border-2 border-brand-600 bg-brand-50 rounded-lg text-xs font-bold text-brand-900 transition flex flex-col items-center justify-center";
+                btnDin.className = "p-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex flex-col items-center justify-center";
+            }
+            showToast(`Forma de pagamento: ${metodo}`, 'info');
+        }
+
+        async function finalizarVenda() {
+            if (!activeCaixaSession) {
+                showToast('Erro: Caixa fechado!', 'error');
+                return;
+            }
+            if (pdvCart.length === 0) return;
+
+            const total = pdvCart.reduce((acc, item) => acc + item.price, 0);
+
+            if (pdvSelectedMethod === 'Dinheiro') {
+                activeCaixaSession.vendas_dinheiro += total;
+            } else {
+                activeCaixaSession.vendas_cartao += total;
+            }
+
+            localFinancial.unshift({
+                id: 'fin_' + Date.now(),
+                type: 'receivable',
+                description: `Venda Caixa ${activeCaixaSession.register_number} (${pdvSelectedMethod})`,
+                amount: total,
+                status: 'paid'
+            });
+
+            if (isSupabaseReady && db) {
+                try {
+                    await db.from('sales').insert([{
+                        company_id: '11111111-1111-1111-1111-111111111111',
+                        session_id: activeCaixaSession.db_session_id || null,
+                        total_amount: total,
+                        payment_method: pdvSelectedMethod
+                    }]);
+                    await db.from('financial_accounts').insert([{
+                        company_id: '11111111-1111-1111-1111-111111111111',
+                        type: 'receivable',
+                        description: `Venda PDV Caixa ${activeCaixaSession.register_number}`,
+                        amount: total,
+                        due_date: new Date().toISOString().split('T')[0],
+                        status: 'paid'
+                    }]);
+                } catch (err) {
+                    console.warn("Aviso ao salvar venda no Supabase:", err);
+                }
+            }
+
+            showToast(`Venda de R$ ${total.toFixed(2)} concluída com sucesso!`, 'success');
+            pdvCart = [];
+            renderPDVCart();
+            carregarFinanceiro();
+        }
+
+        // 6. PRODUTOS E CATÁLOGO
+        async function carregarProdutos() {
+            if (isSupabaseReady && db) {
+                try {
+                    const { data, error } = await db.from('products').select('*').order('name');
+                    if (!error && data && data.length > 0) localProducts = data;
+                } catch (err) {
+                    console.warn("Aviso ao carregar produtos do Supabase:", err);
+                }
+            }
+            renderTabelaProdutos(localProducts);
+        }
+
+        function renderTabelaProdutos(produtos) {
+            const tbody = document.getElementById('tabela-produtos');
+            tbody.innerHTML = '';
+
+            produtos.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-4"><input type="checkbox" class="rounded border-slate-300 text-brand-600"></td>
+                    <td class="p-4">
+                        <p class="font-mono font-medium text-slate-700 text-xs">${p.sku}</p>
+                        <p class="text-xs text-slate-400">${p.barcode || 'S/ Código'}</p>
+                    </td>
+                    <td class="p-4">
+                        <p class="font-semibold text-slate-800">${p.name}</p>
+                    </td>
+                    <td class="p-4 font-medium text-slate-700">${p.stock_quantity || 0} ${p.unit_stock || 'UN'}</td>
+                    <td class="p-4 font-bold text-brand-700">R$ ${Number(p.sale_price).toFixed(2).replace('.', ',')}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deletarProduto('${p.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function filtrarProdutosNaTabela(termo) {
+            const filtrados = localProducts.filter(p => p.name.toLowerCase().includes(termo.toLowerCase()) || p.sku.toLowerCase().includes(termo.toLowerCase()));
+            renderTabelaProdutos(filtrados);
+        }
+
+        async function salvarNovoProduto(e) {
+            e.preventDefault();
+            const name = document.getElementById('prod-name').value;
+            const sku = document.getElementById('prod-sku').value.toUpperCase();
+            const price = parseFloat(document.getElementById('prod-price').value);
+            const stock = parseInt(document.getElementById('prod-stock').value || 0);
+            const unit = document.getElementById('prod-unit').value;
+
+            const novoProduto = { id: 'p_' + Date.now(), sku, name, sale_price: price, stock_quantity: stock, unit_stock: unit };
+            localProducts.unshift(novoProduto);
+
+            if (isSupabaseReady && db) {
+                try {
+                    await db.from('products').insert([{ 
+                        company_id: '11111111-1111-1111-1111-111111111111', 
+                        sku, 
+                        name, 
+                        sale_price: price, 
+                        stock_quantity: stock, 
+                        unit_stock: unit 
+                    }]);
+                } catch (err) {
+                    console.warn("Aviso ao salvar produto no Supabase:", err);
+                }
+            }
+
+            toggleModal('modal-produto');
+            document.getElementById('form-produto').reset();
+            renderTabelaProdutos(localProducts);
+            showToast('Produto cadastrado com sucesso!', 'success');
+        }
+
+        async function deletarProduto(id) {
+            if (!confirm('Deseja excluir este item?')) return;
+            localProducts = localProducts.filter(p => p.id !== id);
+            if (isSupabaseReady && db) {
+                try {
+                    await db.from('products').delete().eq('id', id);
+                } catch (err) {
+                    console.warn("Aviso ao excluir produto no Supabase:", err);
+                }
+            }
+            renderTabelaProdutos(localProducts);
+            showToast('Produto removido', 'info');
+        }
+
+        // 7. FINANCEIRO
+        async function carregarFinanceiro() {
+            if (isSupabaseReady && db) {
+                try {
+                    const { data, error } = await db.from('financial_accounts').select('*').order('created_at', { ascending: false });
+                    if (!error && data && data.length > 0) localFinancial = data;
+                } catch (err) {
+                    console.warn("Aviso ao carregar financeiro do Supabase:", err);
+                }
+            }
+
+            const tbody = document.getElementById('tabela-financeiro');
+            tbody.innerHTML = '';
+            let pagar = 0, receber = 0;
+
+            localFinancial.forEach(f => {
+                if (f.status === 'pending') {
+                    if (f.type === 'payable') pagar += Number(f.amount);
+                    if (f.type === 'receivable') receber += Number(f.amount);
+                }
+
+                const isReceita = f.type === 'receivable';
+                const cor = isReceita ? 'text-emerald-600' : 'text-rose-600';
+                const tag = isReceita ? 'Receita' : 'Despesa';
+                const acao = f.status === 'paid' 
+                    ? `<span class="text-xs bg-slate-100 text-slate-500 px-2.5 py-1 rounded-md font-bold">PAGO / RECEBIDO</span>` 
+                    : `<button onclick="baixarContaFinanceira('${f.id}')" class="text-xs bg-brand-50 text-brand-700 px-3 py-1 rounded-md font-bold hover:bg-brand-100 transition">DAR BAIXA</button>`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-bold text-xs uppercase ${cor}">${tag}</td>
+                        <td class="p-4 font-medium text-slate-800">${f.description}</td>
+                        <td class="p-4 font-bold ${cor}">R$ ${Number(f.amount).toFixed(2).replace('.', ',')}</td>
+                        <td class="p-4">${acao}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('fin-pagar').textContent = `R$ ${pagar.toFixed(2).replace('.', ',')}`;
+            document.getElementById('fin-receber').textContent = `R$ ${receber.toFixed(2).replace('.', ',')}`;
+            document.getElementById('fin-saldo-caixa').textContent = activeCaixaSession ? `R$ ${(activeCaixaSession.initial_amount + activeCaixaSession.vendas_dinheiro).toFixed(2).replace('.', ',')}` : 'R$ 0,00';
+            lucide.createIcons();
+        }
+
+        async function baixarContaFinanceira(id) {
+            const conta = localFinancial.find(f => f.id === id);
+            if (conta) conta.status = 'paid';
+
+            if (isSupabaseReady && db) {
+                try {
+                    await db.from('financial_accounts').update({ status: 'paid' }).eq('id', id);
+                } catch (err) {
+                    console.warn("Aviso ao baixar conta no Supabase:", err);
+                }
+            }
+            carregarFinanceiro();
+            showToast('Baixa confirmada no financeiro!', 'success');
+        }
+
+        // 8. NAVEGAÇÃO & UTILITÁRIOS
+        function navigate(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('block');
+            });
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-brand-100 hover:bg-brand-900 transition-colors";
+            });
+
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            document.getElementById(`view-${viewId}`).classList.add('block');
+            document.getElementById(`nav-${viewId}`).className = "nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg bg-brand-600 text-white shadow-sm";
+
+            const titulos = {
+                'dashboard': 'Visão Geral (Dashboard)',
+                'produtos': 'Catálogo e Produtos',
+                'pdv': 'Ponto de Venda (Frente de Caixa)',
+                'cd': 'WMS - Centro de Distribuição',
+                'logistica': 'Controle Logístico e Rotas',
+                'financeiro': 'Gestão Financeira'
+            };
+            document.getElementById('page-title').textContent = titulos[viewId];
+
+            if (viewId === 'produtos') carregarProdutos();
+            if (viewId === 'financeiro') carregarFinanceiro();
+            if (viewId === 'pdv') atualizarStatusCaixaUI();
+        }
+
+        function toggleDropdown(id) {
+            document.getElementById(id).classList.toggle('hidden');
+        }
+
+        function toggleModal(id) {
+            document.getElementById(id).classList.toggle('hidden');
+        }
+
+        function selecionarUnidade(nome) {
+            document.getElementById('side-company-branch').textContent = nome;
+            toggleDropdown('company-dropdown');
+            showToast(`Unidade alterada para: ${nome}`, 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bgClass = type === 'success' ? "bg-emerald-600 text-white" : type === 'error' ? "bg-rose-600 text-white" : "bg-slate-800 text-white";
+            let icon = type === 'success' ? "check-circle" : type === 'error' ? "alert-circle" : "info";
+
+            toast.className = `flex items-center px-4 py-3 rounded-lg shadow-lg text-sm font-medium toast-enter ${bgClass}`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 mr-2"></i> ${message}`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function carregarTudo() {
+            carregarProdutos();
+            carregarFinanceiro();
+            atualizarStatusCaixaUI();
+        }
+
+        // Verificação de sessão salva ao carregar a página
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (db && isSupabaseReady) {
+                try {
+                    const { data: { session } } = await db.auth.getSession();
+                    if (session && session.user) {
+                        currentUser = {
+                            name: session.user.email.split('@')[0],
+                            email: session.user.email,
+                            role: 'Administrador'
+                        };
+                        document.getElementById('side-user-name').textContent = currentUser.name;
+                        document.getElementById('side-user-avatar').textContent = currentUser.name.substring(0, 2).toUpperCase();
+                        document.getElementById('open-box-operator').value = currentUser.name;
+                        document.getElementById('auth-screen').classList.add('hidden');
+                        carregarTudo();
+                    }
+                } catch (err) {
+                    console.warn("Sem sessão prévia ativa:", err);
+                }
+            }
+        });
+
+        // Fechar dropdowns ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#company-dropdown') && !e.target.closest('.border-brand-800\\/50')) {
+                document.getElementById('company-dropdown')?.classList.add('hidden');
+            }
+            if (!e.target.closest('#notificacoes-dropdown') && !e.target.closest('.fa-bell') && !e.target.closest('.relative button')) {
+                document.getElementById('notificacoes-dropdown')?.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
